@@ -561,6 +561,164 @@ pub fn flagship_scenario() -> Scenario {
     }
 }
 
+// ────────────────────────────────────── Simple demo API (v0.1 spec) ─────────
+
+/// A single step in a simple demo script.
+pub struct DemoStep {
+    pub name: String,
+    pub description: String,
+    pub command: Vec<String>,
+}
+
+/// A simple ordered demo script.
+pub struct DemoScript {
+    pub title: String,
+    pub steps: Vec<DemoStep>,
+}
+
+/// Result from running one demo step.
+pub struct StepResult {
+    pub step: String,
+    pub ok: bool,
+    pub output: String,
+    pub skipped: bool,
+}
+
+/// Aggregate result from running a demo script.
+pub struct DemoResult {
+    pub steps_run: usize,
+    pub steps_passed: usize,
+    pub results: Vec<StepResult>,
+}
+
+/// Build the default five-step ousia-atscale demo script.
+pub fn default_demo_script(model_path: &str) -> DemoScript {
+    DemoScript {
+        title: "AtScale MQO Ethical-AI Toolchain Demo".into(),
+        steps: vec![
+            DemoStep {
+                name: "BFO Grounding".into(),
+                description: "Ground model elements to BFO categories".into(),
+                command: vec![
+                    "ousia-atscale".into(),
+                    "ground".into(),
+                    "--model".into(),
+                    model_path.into(),
+                ],
+            },
+            DemoStep {
+                name: "Coverage Report".into(),
+                description: "Show BFO coverage statistics".into(),
+                command: vec![
+                    "ousia-atscale".into(),
+                    "report".into(),
+                    "--model".into(),
+                    model_path.into(),
+                ],
+            },
+            DemoStep {
+                name: "Aggregate Advice".into(),
+                description: "Estimate query cost tier".into(),
+                command: vec![
+                    "mqo-aggregate-advisor".into(),
+                    "advise".into(),
+                    "--model".into(),
+                    model_path.into(),
+                    "--columns".into(),
+                    "Revenue,Units".into(),
+                ],
+            },
+            DemoStep {
+                name: "Anomaly Scan".into(),
+                description: "Scan for statistical outliers (stub)".into(),
+                command: vec![
+                    "mqo-anomaly-scan".into(),
+                    "scan".into(),
+                    "--rows".into(),
+                    "-".into(),
+                    "--measure".into(),
+                    "Revenue".into(),
+                ],
+            },
+            DemoStep {
+                name: "Semantic Regression".into(),
+                description: "Check for BFO grounding regressions".into(),
+                command: vec![
+                    "mqo-semantic-regression".into(),
+                    "check".into(),
+                    "--old".into(),
+                    model_path.into(),
+                    "--new".into(),
+                    model_path.into(),
+                ],
+            },
+        ],
+    }
+}
+
+/// Run a demo script, optionally in dry-run mode.
+///
+/// In dry-run mode, no subprocesses are executed — each step records the
+/// command that would have been run.  When a binary is not on PATH the step
+/// is marked `skipped` (ok=true) rather than failed.
+pub fn run_demo(script: &DemoScript, dry_run: bool) -> DemoResult {
+    let mut results = Vec::new();
+    for step in &script.steps {
+        if dry_run {
+            results.push(StepResult {
+                step: step.name.clone(),
+                ok: true,
+                output: format!("[dry-run] {}", step.command.join(" ")),
+                skipped: false,
+            });
+            continue;
+        }
+        // Check if binary exists on PATH.
+        let bin = &step.command[0];
+        let on_path = std::process::Command::new("which")
+            .arg(bin)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        if !on_path {
+            results.push(StepResult {
+                step: step.name.clone(),
+                ok: true,
+                output: format!("SKIP: {} not on PATH", bin),
+                skipped: true,
+            });
+            continue;
+        }
+        let out = std::process::Command::new(&step.command[0])
+            .args(&step.command[1..])
+            .output();
+        match out {
+            Ok(o) => {
+                let stdout = String::from_utf8_lossy(&o.stdout).to_string();
+                let ok = o.status.success();
+                results.push(StepResult {
+                    step: step.name.clone(),
+                    ok,
+                    output: stdout,
+                    skipped: false,
+                });
+            }
+            Err(e) => results.push(StepResult {
+                step: step.name.clone(),
+                ok: false,
+                output: e.to_string(),
+                skipped: false,
+            }),
+        }
+    }
+    let steps_passed = results.iter().filter(|r| r.ok).count();
+    DemoResult {
+        steps_run: results.len(),
+        steps_passed,
+        results,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
