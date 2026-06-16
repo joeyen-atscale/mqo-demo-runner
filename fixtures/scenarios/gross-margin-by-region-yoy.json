@@ -1,0 +1,98 @@
+{
+  "scenario": "gross-margin-by-region-yoy",
+  "description": "Gross margin by region year-over-year: EMEA vs AMER — the vision's flagship question",
+  "question": "What is the gross margin by region, year over year, for EMEA vs AMER?",
+  "model": "internet_sales_catalog_BigQuery.internet_sales_schema.internet_sales",
+  "steps": [
+    {
+      "pillar": "catalog-embed",
+      "tool": "mqo-catalog-embed",
+      "args": ["embed", "--model", "internet_sales_catalog_BigQuery.internet_sales_schema.internet_sales"],
+      "mock_response": {
+        "status": "ok",
+        "pillar": "catalog-embed",
+        "embedding_count": 42,
+        "top_match": "Gross_Profit_Margin"
+      }
+    },
+    {
+      "pillar": "binding-confidence",
+      "tool": "mqo-binding-confidence",
+      "args": ["score", "--query", "gross margin by region year over year"],
+      "mock_response": {
+        "status": "ok",
+        "pillar": "binding-confidence",
+        "confidence": 0.91,
+        "verdict": "high"
+      }
+    },
+    {
+      "pillar": "clarify",
+      "tool": "mqo-clarify",
+      "args": ["check", "--query", "gross margin by region year over year EMEA vs AMER"],
+      "mock_response": {
+        "status": "ok",
+        "pillar": "clarify",
+        "ambiguous": false,
+        "clarification_needed": null
+      }
+    },
+    {
+      "pillar": "time-intelligence",
+      "tool": "mqo-time-intelligence",
+      "args": ["resolve", "--expr", "year over year"],
+      "mock_response": {
+        "status": "ok",
+        "pillar": "time-intelligence",
+        "period": "YOY",
+        "grain": "year",
+        "comparison": "current_year vs prior_year"
+      }
+    },
+    {
+      "pillar": "engine-parity",
+      "tool": "mqo-engine-parity",
+      "args": ["check", "--model", "internet_sales_catalog_BigQuery.internet_sales_schema.internet_sales", "--engines", "BigQuery,Snowflake"],
+      "mock_response": {
+        "status": "ok",
+        "pillar": "engine-parity",
+        "engines_checked": ["BigQuery", "Snowflake"],
+        "parity": true,
+        "delta_pct": 0.0
+      }
+    },
+    {
+      "pillar": "sensitivity-scan",
+      "tool": "mqo-sensitivity-scan",
+      "args": ["scan", "--model", "internet_sales_catalog_BigQuery.internet_sales_schema.internet_sales"],
+      "mock_response": {
+        "status": "ok",
+        "pillar": "sensitivity-scan",
+        "pii_fields_found": 0,
+        "safe": true
+      }
+    },
+    {
+      "pillar": "ousia-grounding",
+      "tool": "ousia-atscale",
+      "args": ["ground", "--model", "internet_sales_catalog_BigQuery.internet_sales_schema.internet_sales"],
+      "mock_response": {
+        "status": "ok",
+        "pillar": "ousia-grounding",
+        "bfo_classes_assigned": 7,
+        "grounding_score": 0.88
+      }
+    },
+    {
+      "pillar": "rosetta-credential",
+      "tool": "rosetta-credential",
+      "args": ["sign", "--answer", "gross-margin-emea-amer-yoy"],
+      "mock_response": {
+        "status": "ok",
+        "pillar": "rosetta-credential",
+        "signed": true,
+        "credential_id": "cred-mock-0001"
+      }
+    }
+  ]
+}
